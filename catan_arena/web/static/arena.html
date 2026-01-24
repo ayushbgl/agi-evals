@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catan Arena - LLM Battle</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 20px; color: #ffd700; }
+
+        .setup-panel, .game-panel { background: #16213e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .setup-panel h2, .game-panel h2 { margin-bottom: 15px; color: #4cc9f0; }
+
+        .player-setup { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .player-setup select, .player-setup input {
+            padding: 10px; border-radius: 6px; border: 1px solid #4cc9f0;
+            background: #0f3460; color: #eee; font-size: 14px;
+        }
+
+        button {
+            padding: 12px 24px; border-radius: 6px; border: none;
+            background: #4cc9f0; color: #1a1a2e; font-weight: bold;
+            cursor: pointer; font-size: 14px; transition: all 0.2s;
+        }
+        button:hover { background: #7dd3fc; transform: translateY(-2px); }
+        button:disabled { background: #555; cursor: not-allowed; transform: none; }
+        button.secondary { background: #e94560; }
+
+        .game-info { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+        .info-card {
+            background: #0f3460; padding: 15px; border-radius: 8px; min-width: 150px;
+        }
+        .info-card label { color: #888; font-size: 12px; display: block; }
+        .info-card .value { font-size: 18px; font-weight: bold; margin-top: 5px; }
+
+        .players-list { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+        .player-badge {
+            padding: 8px 16px; border-radius: 20px; font-size: 14px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .player-badge.RED { background: #e53935; }
+        .player-badge.BLUE { background: #1e88e5; }
+        .player-badge.ORANGE { background: #fb8c00; }
+        .player-badge.WHITE { background: #9e9e9e; color: #000; }
+        .player-badge.current { box-shadow: 0 0 0 3px #ffd700; }
+
+        .prompt-panel {
+            background: #0f3460; border-radius: 8px; padding: 20px;
+            margin-bottom: 20px; border: 2px solid #4cc9f0;
+        }
+        .prompt-panel h3 { color: #4cc9f0; margin-bottom: 10px; }
+        .prompt-panel .llm-name { color: #ffd700; font-size: 18px; margin-bottom: 15px; }
+
+        .prompt-text {
+            background: #1a1a2e; padding: 15px; border-radius: 6px;
+            max-height: 400px; overflow-y: auto; font-family: monospace;
+            font-size: 12px; line-height: 1.5; white-space: pre-wrap;
+            margin-bottom: 15px;
+        }
+
+        .response-input {
+            width: 100%; min-height: 150px; padding: 15px;
+            background: #1a1a2e; border: 1px solid #4cc9f0;
+            border-radius: 6px; color: #eee; font-family: monospace;
+            font-size: 13px; resize: vertical;
+        }
+
+        .actions-bar { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+
+        .valid-actions {
+            background: #0f3460; padding: 15px; border-radius: 8px;
+            margin-top: 15px;
+        }
+        .valid-actions h4 { color: #888; margin-bottom: 10px; }
+        .action-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+        .action-chip {
+            background: #16213e; padding: 6px 12px; border-radius: 15px;
+            font-size: 12px; cursor: pointer; transition: all 0.2s;
+        }
+        .action-chip:hover { background: #4cc9f0; color: #1a1a2e; }
+
+        .error { background: #e94560; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .success { background: #4caf50; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+
+        .winner-banner {
+            background: linear-gradient(135deg, #ffd700, #ff6b6b);
+            padding: 30px; border-radius: 12px; text-align: center;
+            margin-bottom: 20px;
+        }
+        .winner-banner h2 { color: #1a1a2e; font-size: 28px; }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎲 Catan Arena - LLM Battle</h1>
+
+        <!-- Setup Panel -->
+        <div class="setup-panel" id="setupPanel">
+            <h2>Game Setup</h2>
+            <div class="player-setup">
+                <div>
+                    <label>Player 1 (RED):</label>
+                    <select id="player1Type">
+                        <option value="LLM">LLM</option>
+                        <option value="RANDOM">Random Bot</option>
+                        <option value="CATANATRON">Catanatron AI</option>
+                    </select>
+                    <input type="text" id="player1Name" placeholder="LLM Name (e.g., Claude)" value="Claude">
+                </div>
+                <div>
+                    <label>Player 2 (BLUE):</label>
+                    <select id="player2Type">
+                        <option value="LLM">LLM</option>
+                        <option value="RANDOM" selected>Random Bot</option>
+                        <option value="CATANATRON">Catanatron AI</option>
+                    </select>
+                    <input type="text" id="player2Name" placeholder="LLM Name" value="GPT-4">
+                </div>
+                <div>
+                    <label>Player 3 (ORANGE):</label>
+                    <select id="player3Type">
+                        <option value="NONE" selected>No Player</option>
+                        <option value="LLM">LLM</option>
+                        <option value="RANDOM">Random Bot</option>
+                        <option value="CATANATRON">Catanatron AI</option>
+                    </select>
+                    <input type="text" id="player3Name" placeholder="LLM Name" value="">
+                </div>
+                <div>
+                    <label>Player 4 (WHITE):</label>
+                    <select id="player4Type">
+                        <option value="NONE" selected>No Player</option>
+                        <option value="LLM">LLM</option>
+                        <option value="RANDOM">Random Bot</option>
+                        <option value="CATANATRON">Catanatron AI</option>
+                    </select>
+                    <input type="text" id="player4Name" placeholder="LLM Name" value="">
+                </div>
+            </div>
+            <button onclick="createGame()">Start Game</button>
+        </div>
+
+        <!-- Game Panel -->
+        <div class="game-panel hidden" id="gamePanel">
+            <h2>Game in Progress</h2>
+
+            <div id="winnerBanner" class="winner-banner hidden">
+                <h2>🏆 <span id="winnerName"></span> Wins!</h2>
+            </div>
+
+            <div class="game-info">
+                <div class="info-card">
+                    <label>Game ID</label>
+                    <div class="value" id="gameId">-</div>
+                </div>
+                <div class="info-card">
+                    <label>Current Player</label>
+                    <div class="value" id="currentPlayer">-</div>
+                </div>
+                <div class="info-card">
+                    <label>Turn</label>
+                    <div class="value" id="turnNumber">0</div>
+                </div>
+            </div>
+
+            <div class="players-list" id="playersList"></div>
+
+            <div id="errorMsg" class="error hidden"></div>
+            <div id="successMsg" class="success hidden"></div>
+
+            <!-- LLM Prompt Panel -->
+            <div class="prompt-panel hidden" id="promptPanel">
+                <h3>🤖 Waiting for LLM Response</h3>
+                <div class="llm-name" id="llmName">Claude</div>
+
+                <details>
+                    <summary style="cursor: pointer; margin-bottom: 10px;">📋 View Full Prompt (click to expand)</summary>
+                    <div class="prompt-text" id="promptText"></div>
+                </details>
+
+                <button onclick="copyPrompt()" style="margin-bottom: 15px;">📋 Copy Prompt</button>
+
+                <div class="valid-actions">
+                    <h4>Valid Action Types:</h4>
+                    <div class="action-chips" id="actionChips"></div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <label>Paste LLM Response:</label>
+                    <textarea class="response-input" id="llmResponse" placeholder='Paste the LLM response here, e.g.:
+{
+  "action_type": "BUILD_SETTLEMENT",
+  "value": 23,
+  "rationale": "Good spot for resources"
+}'></textarea>
+                </div>
+
+                <div class="actions-bar">
+                    <button onclick="submitLLMResponse()">Submit Response</button>
+                    <button class="secondary" onclick="skipTurn()">Skip (Random Action)</button>
+                </div>
+            </div>
+
+            <!-- Bot Turn Panel -->
+            <div id="botPanel" class="hidden">
+                <button onclick="playBotTurn()">▶️ Play Bot Turn</button>
+                <button onclick="autoPlayUntilLLM()">⏩ Auto-play Until LLM Turn</button>
+            </div>
+
+            <div class="actions-bar" style="margin-top: 20px;">
+                <button class="secondary" onclick="newGame()">New Game</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5050/api/arena';
+        let currentGameId = null;
+        let currentPromptData = null;
+
+        async function createGame() {
+            const players = [];
+            for (let i = 1; i <= 4; i++) {
+                const type = document.getElementById(`player${i}Type`).value;
+                if (type === 'NONE') continue;
+
+                const name = document.getElementById(`player${i}Name`).value;
+                if (type === 'LLM' && name) {
+                    players.push(`LLM:${name}`);
+                } else {
+                    players.push(type);
+                }
+            }
+
+            if (players.length < 2) {
+                alert('Need at least 2 players');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/games`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({players})
+                });
+                const data = await res.json();
+
+                currentGameId = data.game_id;
+                document.getElementById('setupPanel').classList.add('hidden');
+                document.getElementById('gamePanel').classList.remove('hidden');
+
+                await refreshGameState();
+            } catch (err) {
+                alert('Error creating game: ' + err.message);
+            }
+        }
+
+        async function refreshGameState() {
+            if (!currentGameId) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/games/${currentGameId}`);
+                const data = await res.json();
+
+                document.getElementById('gameId').textContent = data.game_id.slice(0, 8);
+                document.getElementById('currentPlayer').textContent = data.current_player;
+
+                // Update players list
+                const state = data.state;
+                const playersList = document.getElementById('playersList');
+                playersList.innerHTML = '';
+
+                if (state.players) {
+                    state.players.forEach(p => {
+                        const badge = document.createElement('div');
+                        badge.className = `player-badge ${p.color}`;
+                        if (p.color === data.current_player) badge.classList.add('current');
+                        badge.innerHTML = `<span>${p.color}</span> <small>(${p.type || 'Player'})</small>`;
+                        playersList.appendChild(badge);
+                    });
+                }
+
+                // Check for winner
+                if (data.is_finished) {
+                    document.getElementById('winnerBanner').classList.remove('hidden');
+                    document.getElementById('winnerName').textContent = data.winner;
+                    document.getElementById('promptPanel').classList.add('hidden');
+                    document.getElementById('botPanel').classList.add('hidden');
+                    return;
+                }
+
+                // Show appropriate panel
+                if (data.waiting_for_llm) {
+                    currentPromptData = data.llm_prompt;
+                    document.getElementById('promptPanel').classList.remove('hidden');
+                    document.getElementById('botPanel').classList.add('hidden');
+                    document.getElementById('llmName').textContent =
+                        `${data.llm_prompt.player_name} (${data.llm_prompt.player_color})`;
+                    document.getElementById('promptText').textContent = data.llm_prompt.prompt;
+
+                    // Show action chips
+                    const chips = document.getElementById('actionChips');
+                    chips.innerHTML = '';
+                    data.llm_prompt.action_types.forEach(at => {
+                        const chip = document.createElement('span');
+                        chip.className = 'action-chip';
+                        chip.textContent = at;
+                        chip.onclick = () => {
+                            document.getElementById('llmResponse').value =
+                                `{"action_type": "${at}", "value": null}`;
+                        };
+                        chips.appendChild(chip);
+                    });
+                } else {
+                    document.getElementById('promptPanel').classList.add('hidden');
+                    document.getElementById('botPanel').classList.remove('hidden');
+                }
+
+                hideMessages();
+            } catch (err) {
+                showError('Error fetching game state: ' + err.message);
+            }
+        }
+
+        async function submitLLMResponse() {
+            const response = document.getElementById('llmResponse').value;
+            if (!response.trim()) {
+                showError('Please paste the LLM response');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/games/${currentGameId}/llm-action`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({response})
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showSuccess(`Action executed: ${data.action_executed.action_type}`);
+                    document.getElementById('llmResponse').value = '';
+                    await refreshGameState();
+                } else {
+                    showError(`Invalid action: ${data.error}`);
+                }
+            } catch (err) {
+                showError('Error submitting action: ' + err.message);
+            }
+        }
+
+        async function playBotTurn() {
+            try {
+                await fetch(`${API_BASE}/games/${currentGameId}/bot-action`, {method: 'POST'});
+                await refreshGameState();
+            } catch (err) {
+                showError('Error: ' + err.message);
+            }
+        }
+
+        async function autoPlayUntilLLM() {
+            try {
+                const res = await fetch(`${API_BASE}/games/${currentGameId}/auto-play`, {method: 'POST'});
+                const data = await res.json();
+                showSuccess(`Auto-played ${data.actions_taken} actions`);
+                await refreshGameState();
+            } catch (err) {
+                showError('Error: ' + err.message);
+            }
+        }
+
+        function copyPrompt() {
+            if (currentPromptData) {
+                navigator.clipboard.writeText(currentPromptData.prompt);
+                showSuccess('Prompt copied to clipboard!');
+            }
+        }
+
+        function skipTurn() {
+            // Submit a random valid action
+            if (currentPromptData && currentPromptData.valid_actions.length > 0) {
+                const randomAction = currentPromptData.valid_actions[
+                    Math.floor(Math.random() * currentPromptData.valid_actions.length)
+                ];
+                document.getElementById('llmResponse').value = JSON.stringify(randomAction);
+                submitLLMResponse();
+            }
+        }
+
+        function newGame() {
+            currentGameId = null;
+            currentPromptData = null;
+            document.getElementById('setupPanel').classList.remove('hidden');
+            document.getElementById('gamePanel').classList.add('hidden');
+            document.getElementById('winnerBanner').classList.add('hidden');
+            hideMessages();
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('errorMsg');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+
+        function showSuccess(msg) {
+            const el = document.getElementById('successMsg');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 3000);
+        }
+
+        function hideMessages() {
+            document.getElementById('errorMsg').classList.add('hidden');
+            document.getElementById('successMsg').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

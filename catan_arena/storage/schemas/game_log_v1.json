@@ -1,0 +1,213 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://catan-arena.io/schemas/game-log-v1.json",
+  "title": "Catan Arena Game Log",
+  "description": "Schema for game log files capturing complete Catan-Arena game sessions",
+  "type": "object",
+  "required": ["schema_version", "game_id", "game_type", "players", "turns"],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0",
+      "description": "Schema version for backward compatibility"
+    },
+    "game_id": {
+      "type": "string",
+      "description": "Unique identifier for this game"
+    },
+    "game_type": {
+      "enum": ["catan"],
+      "description": "Type of game played"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when game started"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "description": "Total game duration in seconds"
+    },
+    "players": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Player" },
+      "minItems": 2,
+      "maxItems": 4
+    },
+    "config": { "$ref": "#/$defs/GameConfig" },
+    "initial_state": { "$ref": "#/$defs/BoardState" },
+    "turns": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/TurnRecord" }
+    },
+    "result": { "$ref": "#/$defs/GameResult" }
+  },
+  "$defs": {
+    "Player": {
+      "type": "object",
+      "required": ["id", "color", "type"],
+      "properties": {
+        "id": { "type": "string" },
+        "color": { "enum": ["RED", "BLUE", "ORANGE", "WHITE"] },
+        "type": { "enum": ["llm", "human", "random", "minimax", "mcts", "value"] },
+        "model_name": { "type": "string" },
+        "llm_config": {
+          "type": "object",
+          "properties": {
+            "temperature": { "type": "number" },
+            "max_tokens": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "GameConfig": {
+      "type": "object",
+      "properties": {
+        "map_type": { "enum": ["BASE", "MINI"] },
+        "vps_to_win": { "type": "integer", "default": 10 },
+        "max_turns": { "type": "integer", "default": 1000 },
+        "seed": { "type": "integer" }
+      }
+    },
+    "BoardState": {
+      "type": "object",
+      "properties": {
+        "tiles": { "type": "array" },
+        "buildings": { "type": "array" },
+        "roads": { "type": "array" },
+        "robber_coordinate": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      }
+    },
+    "TurnRecord": {
+      "type": "object",
+      "required": ["turn_number", "player_id", "phase", "action", "timestamp"],
+      "properties": {
+        "turn_number": { "type": "integer" },
+        "player_id": { "type": "string" },
+        "phase": { "type": "string" },
+        "public_state": { "$ref": "#/$defs/PublicTurnState" },
+        "private_states": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/PrivateTurnState" }
+        },
+        "valid_actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/GameAction" }
+        },
+        "llm_decision": { "$ref": "#/$defs/LLMDecision" },
+        "action": { "$ref": "#/$defs/GameAction" },
+        "action_result": { "type": "object" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "PublicTurnState": {
+      "type": "object",
+      "properties": {
+        "turn_number": { "type": "integer" },
+        "current_player": { "type": "integer" },
+        "board": { "$ref": "#/$defs/BoardState" },
+        "player_summaries": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "color": { "type": "string" },
+              "victory_points_visible": { "type": "integer" },
+              "resource_count": { "type": "integer" },
+              "dev_card_count": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "PrivateTurnState": {
+      "type": "object",
+      "properties": {
+        "hand_resources": {
+          "type": "object",
+          "properties": {
+            "WOOD": { "type": "integer" },
+            "BRICK": { "type": "integer" },
+            "SHEEP": { "type": "integer" },
+            "WHEAT": { "type": "integer" },
+            "ORE": { "type": "integer" }
+          }
+        },
+        "hand_dev_cards": {
+          "type": "object",
+          "properties": {
+            "KNIGHT": { "type": "integer" },
+            "VICTORY_POINT": { "type": "integer" },
+            "ROAD_BUILDING": { "type": "integer" },
+            "YEAR_OF_PLENTY": { "type": "integer" },
+            "MONOPOLY": { "type": "integer" }
+          }
+        },
+        "actual_victory_points": { "type": "integer" }
+      }
+    },
+    "LLMDecision": {
+      "type": "object",
+      "properties": {
+        "model_name": { "type": "string" },
+        "prompt_tokens": { "type": "integer" },
+        "completion_tokens": { "type": "integer" },
+        "total_tokens": { "type": "integer" },
+        "latency_ms": { "type": "integer" },
+        "reasoning": { "type": "string" },
+        "raw_output": { "type": "string" },
+        "parsed_action": { "$ref": "#/$defs/GameAction" },
+        "parsed_successfully": { "type": "boolean" },
+        "parse_error": { "type": "string" }
+      }
+    },
+    "GameAction": {
+      "type": "object",
+      "required": ["action_type"],
+      "properties": {
+        "action_type": {
+          "enum": [
+            "ROLL", "END_TURN", "DISCARD",
+            "BUILD_ROAD", "BUILD_SETTLEMENT", "BUILD_CITY",
+            "BUY_DEVELOPMENT_CARD",
+            "PLAY_KNIGHT_CARD", "PLAY_YEAR_OF_PLENTY",
+            "PLAY_MONOPOLY", "PLAY_ROAD_BUILDING",
+            "MOVE_ROBBER",
+            "MARITIME_TRADE", "OFFER_TRADE",
+            "ACCEPT_TRADE", "REJECT_TRADE",
+            "CONFIRM_TRADE", "CANCEL_TRADE"
+          ]
+        },
+        "value": {},
+        "rationale": { "type": "string" }
+      }
+    },
+    "GameResult": {
+      "type": "object",
+      "required": ["termination_reason"],
+      "properties": {
+        "termination_reason": {
+          "enum": ["victory", "turn_limit", "error"]
+        },
+        "winner_id": { "type": "string" },
+        "final_scores": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
+        "total_turns": { "type": "integer" },
+        "statistics": {
+          "type": "object",
+          "properties": {
+            "total_llm_calls": { "type": "integer" },
+            "total_tokens_used": { "type": "integer" },
+            "average_decision_time_ms": { "type": "number" }
+          }
+        }
+      }
+    }
+  }
+}
