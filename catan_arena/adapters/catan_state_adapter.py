@@ -425,7 +425,23 @@ You are playing Settlers of Catan. Your goal is to reach 10 Victory Points first
                 for action in actions:
                     value = action.get("value")
                     if value is not None:
-                        lines.append(f"    - value: {value}")
+                        # Format maritime trade more clearly
+                        if atype == "MARITIME_TRADE" and isinstance(value, (list, tuple)) and len(value) == 5:
+                            give = [v for v in value[:4] if v is not None]
+                            receive = value[4]
+                            ratio = len(give)
+                            give_str = give[0] if give else "?"
+                            lines.append(f"    - Give {ratio}x {give_str} → Get 1x {receive}")
+                            lines.append(f"      (value: {list(value)})")
+                        elif atype == "OFFER_TRADE" and isinstance(value, (list, tuple)) and len(value) == 10:
+                            # Format player trade
+                            resources = ["WOOD", "BRICK", "SHEEP", "WHEAT", "ORE"]
+                            offer = [f"{value[i]}x{resources[i]}" for i in range(5) if value[i] > 0]
+                            request = [f"{value[i+5]}x{resources[i]}" for i in range(5) if value[i+5] > 0]
+                            lines.append(f"    - Offer: {', '.join(offer) or 'nothing'} → Want: {', '.join(request) or 'nothing'}")
+                            lines.append(f"      (value: {list(value)})")
+                        else:
+                            lines.append(f"    - value: {value}")
 
         return "\n".join(lines)
 
@@ -438,7 +454,10 @@ Think step by step, then output JSON:
 
 ```json
 {"action_type": "BUILD_SETTLEMENT", "value": 23, "rationale": "Why this move"}
-```"""
+```
+
+MARITIME_TRADE: [give,give,give,give,receive] - e.g. ["WOOD","WOOD","WOOD","WOOD","ORE"] = give 4 wood, get 1 ore
+OFFER_TRADE: [offer_W,B,S,H,O, request_W,B,S,H,O] - e.g. [1,0,0,0,0, 0,0,0,1,0] = offer 1 wood, want 1 wheat"""
 
         return """## YOUR RESPONSE
 
@@ -470,10 +489,32 @@ Then output your chosen action as a JSON code block:
 | BUY_DEVELOPMENT_CARD | null | {"action_type": "BUY_DEVELOPMENT_CARD", "value": null} |
 | PLAY_KNIGHT_CARD | null | {"action_type": "PLAY_KNIGHT_CARD", "value": null} |
 | MOVE_ROBBER | [coord, victim] | {"action_type": "MOVE_ROBBER", "value": [[1,0,-1], "RED"]} |
-| MARITIME_TRADE | resource_tuple | {"action_type": "MARITIME_TRADE", "value": ["WOOD","WOOD","WOOD","WOOD","ORE"]} |
 
-Note: Dice rolling is automatic - you don't need to choose ROLL.
-Choose wisely to maximize your chance of reaching 10 VP first!"""
+### Trading with the Bank (MARITIME_TRADE):
+
+Format: 5-element array [give1, give2, give3, give4, receive]
+- **4:1 Bank Trade**: Give 4 of same resource, get 1 different
+  `{"action_type": "MARITIME_TRADE", "value": ["WOOD","WOOD","WOOD","WOOD","ORE"]}`
+  → Give 4 WOOD to bank, receive 1 ORE
+
+- **3:1 Port Trade**: Give 3 of any resource (if you have a 3:1 port)
+  `{"action_type": "MARITIME_TRADE", "value": ["BRICK","BRICK","BRICK",null,"WHEAT"]}`
+  → Give 3 BRICK, receive 1 WHEAT
+
+- **2:1 Port Trade**: Give 2 of specific resource (if you have that 2:1 port)
+  `{"action_type": "MARITIME_TRADE", "value": ["ORE","ORE",null,null,"WOOD"]}`
+  → Give 2 ORE, receive 1 WOOD
+
+### Trading with Players (OFFER_TRADE):
+
+Format: 10-element array [offer 5 resources, request 5 resources]
+Order: [WOOD, BRICK, SHEEP, WHEAT, ORE, WOOD, BRICK, SHEEP, WHEAT, ORE]
+         ^^^^^^^ YOU GIVE ^^^^^^^    ^^^^^^^ YOU GET ^^^^^^^
+
+Example: Offer 1 wood + 1 brick, request 1 wheat
+`{"action_type": "OFFER_TRADE", "value": [1,1,0,0,0, 0,0,0,1,0]}`
+
+Note: Dice rolling is automatic. Choose wisely to reach 10 VP first!"""
 
     def get_output_schema(self) -> Dict[str, Any]:
         """JSON Schema for expected LLM output."""
