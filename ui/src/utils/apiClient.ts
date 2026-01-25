@@ -3,7 +3,8 @@ import axios from "axios";
 import { API_URL } from "../configuration";
 import type { Color, GameAction, GameState } from "./api.types";
 
-type Player = "HUMAN" | "RANDOM" | "CATANATRON";
+// Legacy player types for the original Catan game engine
+type Player = "HUMAN" | "RANDOM" | "BOT";
 export type StateIndex = number | `${number}` | "latest";
 
 export async function createGame(players: Player[]) {

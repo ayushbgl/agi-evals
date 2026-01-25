@@ -1,0 +1,138 @@
+.codenames-live-screen {
+  min-height: 100vh;
+  background: #1a252f;
+  color: white;
+
+  &.loading {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: #2c3e50;
+    border-radius: 0;
+
+    h5 {
+      color: white;
+    }
+  }
+
+  .main-content {
+    display: flex;
+    padding: 20px;
+    gap: 20px;
+    min-height: calc(100vh - 80px);
+
+    @media (max-width: 1200px) {
+      flex-direction: column;
+    }
+  }
+
+  .board-section {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .side-panel {
+    width: 350px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+
+    @media (max-width: 1200px) {
+      width: 100%;
+    }
+  }
+
+  .teams-section,
+  .llm-section {
+    padding: 20px;
+    background: #2c3e50;
+
+    h6 {
+      color: white;
+      border-bottom: 1px solid #34495e;
+      padding-bottom: 10px;
+    }
+  }
+
+  .team {
+    margin: 15px 0;
+    padding: 10px;
+    border-radius: 4px;
+
+    &.red {
+      background: rgba(220, 53, 69, 0.1);
+      border-left: 3px solid #dc3545;
+
+      .team-header {
+        color: #dc3545;
+      }
+    }
+
+    &.blue {
+      background: rgba(0, 123, 255, 0.1);
+      border-left: 3px solid #007bff;
+
+      .team-header {
+        color: #007bff;
+      }
+    }
+
+    .player-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px;
+      margin: 5px 0;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+
+      &.active {
+        background: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+      }
+
+      .role {
+        text-transform: capitalize;
+        font-size: 12px;
+        opacity: 0.8;
+      }
+
+      .model {
+        font-size: 13px;
+        font-weight: 500;
+      }
+    }
+  }
+
+  .llm-thinking {
+    .thinking-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .reasoning,
+    .action {
+      margin-top: 12px;
+      padding: 10px;
+      background: #34495e;
+      border-radius: 4px;
+    }
+
+    .action {
+      background: #1e3a5f;
+    }
+  }
+}

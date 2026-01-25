@@ -11,6 +11,11 @@ import { StateProvider } from "./store";
 import "./App.scss";
 import ReplayScreen from "./pages/ReplayScreen";
 import ArenaReplayScreen from "./pages/ArenaReplayScreen";
+import CodenamesReplayScreen from "./pages/CodenamesReplayScreen";
+import CatanLiveScreen from "./pages/CatanLiveScreen";
+import CodenamesLiveScreen from "./pages/CodenamesLiveScreen";
+import CatanGameScreen from "./pages/CatanGameScreen";
+import CodenamesGameScreen from "./pages/CodenamesGameScreen";
 
 const theme = createTheme({
   palette: {
@@ -36,17 +41,32 @@ function App() {
         >
           <Router>
             <Routes>
+              {/* Game configuration screens */}
+              <Route path="/catan/play" element={<CatanLiveScreen />} />
+              <Route path="/codenames/play" element={<CodenamesLiveScreen />} />
+
+              {/* Live game screens (with game ID) */}
+              <Route path="/catan/live/:gameId" element={<CatanGameScreen />} />
+              <Route path="/codenames/live/:gameId" element={<CodenamesGameScreen />} />
+
+              {/* Replay screens */}
+              <Route path="/catan/replay/:gameId?" element={<ArenaReplayScreen />} />
+              <Route path="/catan/replay" element={<ArenaReplayScreen />} />
+              <Route path="/codenames/replay/:gameId?" element={<CodenamesReplayScreen />} />
+              <Route path="/codenames/replay" element={<CodenamesReplayScreen />} />
+
+              {/* Legacy routes for existing game engine */}
               <Route
                 path="/games/:gameId/states/:stateIndex"
                 element={<GameScreen replayMode={true} />}
               />
               <Route path="/replays/:gameId" element={<ReplayScreen />} />
-              <Route path="/arena/replay/:gameId?" element={<ArenaReplayScreen />} />
-              <Route path="/arena/replay" element={<ArenaReplayScreen />} />
               <Route
                 path="/games/:gameId"
                 element={<GameScreen replayMode={false} />}
               />
+
+              {/* Home */}
               <Route path="/" element={<HomePage />} />
             </Routes>
           </Router>

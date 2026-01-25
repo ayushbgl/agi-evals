@@ -1,0 +1,150 @@
+.codenames-replay-screen {
+  min-height: 100vh;
+  background: #1a252f;
+  color: white;
+  display: flex;
+  flex-direction: column;
+
+  &.loading {
+    justify-content: center;
+    align-items: center;
+  }
+
+  .header {
+    padding: 20px;
+    background: #2c3e50;
+    border-bottom: 1px solid #34495e;
+  }
+
+  .main-content {
+    display: flex;
+    flex: 1;
+    padding: 20px;
+    gap: 20px;
+
+    @media (max-width: 1200px) {
+      flex-direction: column;
+    }
+  }
+
+  .board-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .side-panel {
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+
+    @media (max-width: 1200px) {
+      width: 100%;
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+  }
+
+  .control-panel,
+  .turn-info-panel,
+  .players-panel {
+    padding: 15px;
+    background: #2c3e50;
+    border-radius: 8px;
+
+    h6 {
+      color: #ecf0f1;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #34495e;
+      padding-bottom: 8px;
+    }
+  }
+
+  .turn-info-panel {
+    p {
+      margin: 5px 0;
+      font-size: 14px;
+
+      strong {
+        color: #3498db;
+      }
+    }
+  }
+
+  .players-panel {
+    .player-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      margin: 5px 0;
+      border-radius: 4px;
+      font-size: 13px;
+
+      &.red {
+        background: rgba(220, 53, 69, 0.2);
+        border-left: 3px solid #dc3545;
+      }
+
+      &.blue {
+        background: rgba(0, 123, 255, 0.2);
+        border-left: 3px solid #007bff;
+      }
+
+      .player-id {
+        font-weight: bold;
+        flex: 1;
+      }
+
+      .player-role {
+        font-size: 11px;
+        text-transform: uppercase;
+        opacity: 0.7;
+      }
+
+      .player-model {
+        font-size: 11px;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 2px 6px;
+        border-radius: 3px;
+      }
+    }
+  }
+
+  .playback-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 30px;
+    background: #2c3e50;
+    border-top: 1px solid #34495e;
+    margin: 0;
+    border-radius: 0;
+
+    .MuiIconButton-root {
+      color: white;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+    }
+
+    .turn-slider {
+      flex: 1;
+      padding: 0 20px;
+
+      .MuiSlider-root {
+        color: #3498db;
+      }
+    }
+
+    .turn-counter {
+      min-width: 80px;
+      text-align: center;
+      font-family: monospace;
+      font-size: 14px;
+    }
+  }
+}

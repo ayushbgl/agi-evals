@@ -1,107 +1,107 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@mui/material";
-import { GridLoader } from "react-spinners";
-import { createGame } from "../utils/apiClient";
+import { Button, FormControl, InputLabel, Select, MenuItem, Box, Typography } from "@mui/material";
 
 import "./HomePage.scss";
 
-// Enum of Type of Game Mode
-const GameMode = Object.freeze({
-  HUMAN_VS_CATANATRON: "HUMAN_VS_CATANATRON",
-  RANDOM_BOTS: "RANDOM_BOTS",
-  CATANATRON_BOTS: "CATANATRON_BOTS",
-});
-
-type GameModeType = typeof GameMode[keyof typeof GameMode]
-
-function getPlayers(gameMode: GameModeType, numPlayers: number) {
-  switch (gameMode) {
-    case GameMode.HUMAN_VS_CATANATRON:
-      const players = ["HUMAN"];
-      for (let i = 1; i < numPlayers; i++) {
-        players.push("CATANATRON");
-      }
-      return players;
-    case GameMode.RANDOM_BOTS:
-      return Array(numPlayers).fill("RANDOM");
-    case GameMode.CATANATRON_BOTS:
-      return Array(numPlayers).fill("CATANATRON");
-    default:
-      throw new Error("Invalid Game Mode");
-  }
-}
+// Available games
+type GameType = "catan" | "codenames";
 
 export default function HomePage() {
-  const [loading, setLoading] = useState(false);
-  const [numPlayers, setNumPlayers] = useState(2);
+  const [selectedGame, setSelectedGame] = useState<GameType>("catan");
   const navigate = useNavigate();
 
-  const handleCreateGame = async (gameMode: GameModeType) => {
-    setLoading(true);
-    const players = getPlayers(gameMode, numPlayers);
-    const gameId = await createGame(players);
-    setLoading(false);
-    navigate("/games/" + gameId);
+  const handleStartGame = () => {
+    // Navigate to the live game view for the selected game
+    navigate(`/${selectedGame}/play`);
+  };
+
+  const handleViewReplays = () => {
+    navigate(`/${selectedGame}/replay`);
   };
 
   return (
     <div className="home-page">
-      <h1 className="logo">Catanatron</h1>
+      <h1 className="logo">Game Arena</h1>
+      <Typography variant="subtitle1" sx={{ color: 'rgba(255,255,255,0.7)', mb: 3 }}>
+        LLM Benchmarking Platform
+      </Typography>
+
+      {/* Game Selector */}
+      <Box className="game-selector">
+        <FormControl variant="outlined" size="small" className="game-select-control">
+          <InputLabel id="game-select-label" sx={{ color: 'white' }}>Select Game</InputLabel>
+          <Select
+            labelId="game-select-label"
+            value={selectedGame}
+            onChange={(e) => setSelectedGame(e.target.value as GameType)}
+            label="Select Game"
+            sx={{
+              color: 'white',
+              '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.5)' },
+              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'white' },
+              '.MuiSvgIcon-root': { color: 'white' },
+            }}
+          >
+            <MenuItem value="catan">Settlers of Catan</MenuItem>
+            <MenuItem value="codenames">Codenames</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
 
       <div className="switchable">
-        {!loading ? (
+        {selectedGame === "catan" ? (
+          /* Catan Options */
           <>
-            <ul>
-              <li>OPEN HAND</li>
-              <li>NO CHOICE DURING DISCARD</li>
-            </ul>
-            <div className="player-count-selector">
-              <div className="player-count-label">Number of Players</div>
-              <div className="player-count-buttons">
-                {[2, 3, 4].map((value) => (
-                  <Button
-                    key={value}
-                    variant="contained"
-                    onClick={() => setNumPlayers(value)}
-                    className={`player-count-button ${
-                      numPlayers === value ? "selected" : ""
-                    }`}
-                  >
-                    {value} Players
-                  </Button>
-                ))}
-              </div>
-            </div>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => handleCreateGame(GameMode.HUMAN_VS_CATANATRON)}
-            >
-              Play against Catanatron
-            </Button>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={() => handleCreateGame(GameMode.RANDOM_BOTS)}
-            >
-              Watch Random Bots
-            </Button>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={() => handleCreateGame(GameMode.CATANATRON_BOTS)}
-            >
-              Watch Catanatron
-            </Button>
+            <Typography variant="h5" className="game-title">Settlers of Catan</Typography>
+            <Box className="game-description">
+              <Typography variant="body2" sx={{ opacity: 0.8, mb: 1 }}>
+                Classic strategy board game where players collect resources,
+                build settlements and cities, and trade to earn victory points.
+              </Typography>
+              <ul>
+                <li>2-4 LLM players</li>
+                <li>Resource management & trading</li>
+                <li>First to 10 victory points wins</li>
+              </ul>
+            </Box>
           </>
         ) : (
-          <GridLoader
-            className="loader"
-            color="#ffffff"
-            size={60}
-          />
+          /* Codenames Options */
+          <>
+            <Typography variant="h5" className="game-title">Codenames</Typography>
+            <Box className="game-description">
+              <Typography variant="body2" sx={{ opacity: 0.8, mb: 1 }}>
+                Word association game where Spymasters give clues to help
+                their Operatives find their team's agents on the board.
+              </Typography>
+              <ul>
+                <li>Two teams: Red vs Blue</li>
+                <li>Spymasters give word clues</li>
+                <li>Operatives guess words</li>
+                <li>Avoid the Assassin!</li>
+              </ul>
+            </Box>
+          </>
         )}
+
+        <Box className="action-buttons">
+          <Button
+            variant="contained"
+            color="primary"
+            size="large"
+            onClick={handleStartGame}
+          >
+            Start LLM Game
+          </Button>
+          <Button
+            variant="outlined"
+            sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.5)' }}
+            onClick={handleViewReplays}
+          >
+            View Replays
+          </Button>
+        </Box>
       </div>
     </div>
   );

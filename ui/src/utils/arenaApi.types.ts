@@ -200,3 +200,144 @@ export interface VisibleGameState {
   showAllReasoning: boolean;
   showReasoningFor?: string;
 }
+
+// ============================================
+// Codenames Types
+// ============================================
+
+export type CodenamesTeam = "red" | "blue";
+export type CodenamesRole = "spymaster" | "operative";
+export type CodenamesCardType = "red" | "blue" | "bystander" | "assassin";
+export type CodenamesPhase = "spymaster_clue" | "operative_guess" | "game_over";
+
+export interface CodenamesPlayer {
+  id: string;
+  team: CodenamesTeam;
+  role: CodenamesRole;
+  type: PlayerType;
+  model_name?: string;
+}
+
+export interface CodenamesWordCell {
+  word: string;
+  revealed: boolean;
+  card_type?: CodenamesCardType;
+}
+
+export interface CodenamesClue {
+  word: string;
+  number: number;
+}
+
+export interface CodenamesClueRecord {
+  team: CodenamesTeam;
+  word: string;
+  number: number;
+  turn: number;
+}
+
+export interface CodenamesGuessRecord {
+  team: CodenamesTeam;
+  player: string;
+  word: string;
+  card_type: CodenamesCardType;
+  correct: boolean;
+  turn: number;
+}
+
+export interface CodenamesPublicState {
+  grid: CodenamesWordCell[][];
+  revealed_words: string[];
+  current_team: CodenamesTeam;
+  current_phase: CodenamesPhase;
+  current_clue: CodenamesClue | null;
+  guesses_remaining: number;
+  red_remaining: number;
+  blue_remaining: number;
+  turn_number: number;
+  clue_history: CodenamesClueRecord[];
+  guess_history: CodenamesGuessRecord[];
+  game_over: boolean;
+  winner: CodenamesTeam | null;
+}
+
+export interface CodenamesPrivateState {
+  player_id: string;
+  team: CodenamesTeam;
+  role: CodenamesRole;
+  card_types?: Record<string, CodenamesCardType>; // Only for spymasters
+  key_card?: string[][]; // Visual key card for spymasters
+}
+
+export interface CodenamesAction {
+  action_type: "GIVE_CLUE" | "GUESS" | "PASS";
+  clue?: string;
+  number?: number;
+  word?: string;
+  reasoning?: string;
+}
+
+export interface CodenamesTurnRecord {
+  turn_number: number;
+  player_id: string;
+  role: CodenamesRole;
+  phase: CodenamesPhase;
+  public_state: CodenamesPublicState;
+  private_states: Record<string, CodenamesPrivateState>;
+  valid_actions: CodenamesAction[];
+  llm_decision?: LLMDecision;
+  action: CodenamesAction;
+  action_result?: {
+    card_type?: CodenamesCardType;
+    correct?: boolean;
+    turn_continues?: boolean;
+    game_over?: boolean;
+    winner?: CodenamesTeam;
+  };
+  timestamp: string;
+}
+
+export interface CodenamesGameConfig {
+  word_list: "standard" | "easy" | "tech" | "combined";
+  max_turns: number;
+  starting_team?: CodenamesTeam;
+}
+
+export interface CodenamesGameResult {
+  termination_reason: "victory" | "assassin" | "turn_limit" | "error";
+  winner?: CodenamesTeam;
+  final_scores: {
+    red: { found: number; total: number; remaining: number };
+    blue: { found: number; total: number; remaining: number };
+  };
+  total_turns: number;
+  loss_reason?: string;
+}
+
+export interface CodenamesGameLog {
+  schema_version: string;
+  game_id: string;
+  game_type: "codenames";
+  created_at: string;
+  duration_seconds?: number;
+  players: CodenamesPlayer[];
+  config: CodenamesGameConfig;
+  initial_state?: {
+    grid: string[][];
+    card_types: Record<string, CodenamesCardType>;
+  };
+  turns: CodenamesTurnRecord[];
+  result?: CodenamesGameResult;
+}
+
+// Union type for all game logs
+export type GameLog = ArenaGameLog | CodenamesGameLog;
+
+// Type guard functions
+export function isCatanGameLog(log: GameLog): log is ArenaGameLog {
+  return log.game_type === "catan";
+}
+
+export function isCodenamesGameLog(log: GameLog): log is CodenamesGameLog {
+  return log.game_type === "codenames";
+}

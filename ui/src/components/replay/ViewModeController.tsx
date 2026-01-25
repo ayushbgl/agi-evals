@@ -18,8 +18,8 @@ import {
   Tooltip,
   FormControl,
   InputLabel,
-  SelectChangeEvent,
 } from "@mui/material";
+import type { SelectChangeEvent } from "@mui/material/Select";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import PersonIcon from "@mui/icons-material/Person";

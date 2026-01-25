@@ -28,6 +28,14 @@ web = [
     "sqlalchemy",
     "psycopg2-binary",
 ]
+arena = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "websockets>=11.0",
+    "openai>=1.0.0",
+    "anthropic>=0.18.0",
+    "pydantic>=2.0.0",
+]
 dev = [
     "black",
     "pytest",

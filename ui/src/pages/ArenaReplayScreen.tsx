@@ -285,7 +285,7 @@ function ArenaReplayContent() {
           {/* Note about full board */}
           <Alert severity="info" sx={{ mt: 2 }}>
             Full board visualization coming soon. For now, use the existing
-            Catanatron replay viewer for graphical board display.
+            Settlers of Catan replay viewer for graphical board display.
           </Alert>
         </Paper>
 
