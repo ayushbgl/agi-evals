@@ -1,102 +1,341 @@
-@use "sass:color";
-@use "../variables.scss";
-
 .home-page {
-  height: 100%;
-
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
   min-height: 100vh;
+  background: #0a0a0a;
+  color: #fff;
+  overflow-x: hidden;
 
-  h1 {
-    color: white;
-    font-size: 2.5rem;
-    margin-bottom: 20px;
-  }
 
-  .game-selector {
-    margin-bottom: 20px;
-
-    .game-select-control {
-      min-width: 200px;
-    }
-  }
-
-  .game-title {
-    color: white;
-    margin-bottom: 15px;
-    text-align: center;
-  }
-
-  ul {
-    color: white;
-    margin-top: 0px;
-    margin-bottom: 3px;
-  }
-
-  .codenames-info {
-    text-align: center;
-    color: white;
-  }
-
-  .switchable {
-    min-height: 280px;
+  // ─── Header ────────────────────────────────────────────────
+  .hp-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
     display: flex;
-    flex-direction: column;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-  }
+    padding: 20px 40px;
+    background: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.85) 0%,
+      transparent 100%
+    );
 
-  .game-description {
-    text-align: center;
-    color: white;
-    margin-bottom: 20px;
-
-    ul {
-      text-align: left;
-      display: inline-block;
+    .logo {
+      font-size: 1.9rem;
+      font-weight: 800;
+      letter-spacing: 3px;
+      color: #e50914;
+      margin: 0;
     }
-  }
 
-  .action-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 10px;
+    nav {
+      display: flex;
+      gap: 28px;
 
-    button {
-      min-width: 200px;
-    }
-  }
-
-  .player-count-selector {
-    margin: 0 0 16px 0;
-    text-align: center;
-
-    .player-count-buttons {
-      .player-count-button {
-        width: 130px;
-        height: 35px;
-        font-size: 1rem;
-        color: white !important;
-        margin: 0 4px;
-        transition: background-color 0.3s;
-        background-color: variables.$dark-gray !important;
+      span {
+        font-size: 0.88rem;
+        color: rgba(255, 255, 255, 0.75);
+        cursor: pointer;
+        transition: color 0.2s;
 
         &:hover {
-          background-color: color.adjust(variables.$dark-gray, $lightness: -10%) !important;
+          color: #fff;
         }
+      }
+    }
+  }
 
-        &.selected {
-          background-color: #0d47a1 !important;
-          color: white !important;
+  // ─── Shared tag pill ───────────────────────────────────────
+  .tag {
+    display: inline-block;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.72rem;
+    padding: 4px 11px;
+    border-radius: 20px;
+  }
 
-          &:hover {
-            background-color: color.adjust(#0d47a1, $lightness: -1%) !important;
-          }
+  // ─── Hero ──────────────────────────────────────────────────
+  .hero {
+    position: relative;
+    height: 58vh;
+    min-height: 380px;
+    display: flex;
+    align-items: flex-end;
+    padding: 100px 48px 64px;
+    overflow: hidden;
+
+    // bottom fade to page background
+    &::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 45%;
+      background: linear-gradient(to top, #0a0a0a, transparent);
+      pointer-events: none;
+    }
+
+    .hero-body {
+      position: relative;
+      z-index: 2;
+      max-width: 560px;
+
+      .hero-badge {
+        display: inline-block;
+        background: #e50914;
+        color: #fff;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 2px;
+        padding: 4px 12px;
+        border-radius: 4px;
+        margin-bottom: 14px;
+      }
+
+      h2 {
+        font-size: 2.9rem;
+        font-weight: 700;
+        line-height: 1.1;
+        margin: 0 0 10px;
+      }
+
+      p {
+        font-size: 0.95rem;
+        color: rgba(255, 255, 255, 0.75);
+        line-height: 1.55;
+        margin: 0 0 18px;
+      }
+
+      .hero-tags {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 26px;
+      }
+
+      .hero-actions {
+        display: flex;
+        gap: 12px;
+      }
+
+      .btn-play,
+      .btn-secondary {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.15s, filter 0.15s;
+
+        &:hover {
+          transform: scale(1.05);
+          filter: brightness(1.12);
         }
+      }
+
+      .btn-play {
+        background: #fff;
+        color: #141414;
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.13);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+      }
+    }
+
+    .hero-icon {
+      position: absolute;
+      right: 10%;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 11rem;
+      opacity: 0.12;
+      z-index: 1;
+      pointer-events: none;
+    }
+  }
+
+  // ─── Rows ──────────────────────────────────────────────────
+  .row {
+    padding: 0 40px;
+    margin-bottom: 44px;
+
+    .row-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0 0 18px;
+      color: #fff;
+    }
+
+    .row-cards {
+      display: flex;
+      gap: 18px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      scrollbar-width: none;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
+    }
+  }
+
+  // ─── Game card ─────────────────────────────────────────────
+  .game-card {
+    flex: 0 0 calc(33.33% - 12px);
+    min-width: 260px;
+    max-width: 420px;
+    min-height: 210px;
+    border-radius: 10px;
+    padding: 28px 24px 24px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    transition: transform 0.24s ease, box-shadow 0.24s ease;
+
+    &:hover {
+      transform: scale(1.045);
+      box-shadow: 0 10px 36px rgba(0, 0, 0, 0.45);
+    }
+
+    // floating emoji
+    .card-icon {
+      position: absolute;
+      top: 22px;
+      right: 22px;
+      font-size: 2.8rem;
+      opacity: 0.28;
+      pointer-events: none;
+    }
+
+    // "Coming Soon" ribbon
+    .coming-soon {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      background: #e50914;
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      z-index: 2;
+    }
+
+    .card-body {
+      position: relative;
+      z-index: 2;
+
+      h3 {
+        font-size: 1.15rem;
+        margin: 0 0 6px;
+      }
+
+      p {
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.65);
+        line-height: 1.42;
+        margin: 0 0 10px;
+      }
+
+      .card-tags {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+    }
+
+    // hover overlay with play button
+    .card-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.24s;
+      z-index: 1;
+
+      .play-btn {
+        background: #fff;
+        color: #141414;
+        padding: 9px 22px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.88rem;
+        opacity: 0;
+        transform: translateY(6px);
+        transition: opacity 0.24s, transform 0.24s;
+      }
+    }
+
+    &:hover .card-overlay {
+      background: rgba(0, 0, 0, 0.32);
+
+      .play-btn {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    // disabled state
+    &.disabled {
+      cursor: default;
+      opacity: 0.55;
+
+      &:hover {
+        transform: none;
+        box-shadow: none;
+      }
+    }
+  }
+
+  // ─── Leaderboard card ──────────────────────────────────────
+  .lb-card {
+    flex: 1;
+    min-width: 380px;
+    max-width: 100%;
+    background: linear-gradient(145deg, #1c1600 0%, #3d2a00 60%, #5c3f00 100%);
+    border-radius: 10px;
+    padding: 36px 40px;
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    cursor: pointer;
+    transition: transform 0.24s, box-shadow 0.24s;
+
+    &:hover {
+      transform: scale(1.02);
+      box-shadow: 0 10px 36px rgba(0, 0, 0, 0.45);
+    }
+
+    .lb-icon {
+      font-size: 3.6rem;
+      flex-shrink: 0;
+    }
+
+    .lb-body {
+      h3 {
+        font-size: 1.35rem;
+        margin: 0 0 6px;
+      }
+
+      p {
+        font-size: 0.82rem;
+        color: rgba(255, 255, 255, 0.65);
+        margin: 0;
       }
     }
   }

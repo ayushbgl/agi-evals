@@ -105,7 +105,7 @@ class CatanStateAdapter(StateAdapter):
 
         return "\n\n".join(sections)
 
-    def format_system_prompt(self, role: Optional[str] = None) -> str:
+    def format_system_prompt(self, role: Optional[str] = None, **kwargs) -> str:
         """Return the system prompt for the LLM."""
         return """You are an expert Settlers of Catan player. You analyze game states strategically and make optimal decisions to win the game. You always respond with valid JSON containing your chosen action and reasoning."""
 

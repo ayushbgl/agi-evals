@@ -85,50 +85,34 @@ class LLMAgent(Agent):
         """
         start_time = time.time()
 
-        try:
-            if self._provider == "openai":
-                response = self._call_openai(prompt, system_prompt)
-            elif self._provider == "anthropic":
-                response = self._call_anthropic(prompt, system_prompt)
-            elif self._provider == "google":
-                response = self._call_google(prompt, system_prompt)
-            else:
-                raise ValueError(f"Unknown provider: {self._provider}")
+        if self._provider == "openai":
+            response = self._call_openai(prompt, system_prompt)
+        elif self._provider == "anthropic":
+            response = self._call_anthropic(prompt, system_prompt)
+        elif self._provider == "google":
+            response = self._call_google(prompt, system_prompt)
+        else:
+            raise ValueError(f"Unknown provider: {self._provider}")
 
-            latency_ms = int((time.time() - start_time) * 1000)
+        latency_ms = int((time.time() - start_time) * 1000)
 
-            # Parse response
-            raw_output = response["content"]
-            parsed = self._parse_response(raw_output, valid_actions)
+        # Parse response
+        raw_output = response["content"]
+        parsed = self._parse_response(raw_output, valid_actions)
 
-            return {
-                "action": parsed["action"],
-                "reasoning": parsed.get("reasoning", ""),
-                "raw_output": raw_output,
-                "metadata": {
-                    "model": self.model,
-                    "provider": self._provider,
-                    "latency_ms": latency_ms,
-                    "prompt_tokens": response.get("prompt_tokens", 0),
-                    "completion_tokens": response.get("completion_tokens", 0),
-                    "total_tokens": response.get("total_tokens", 0),
-                },
-            }
-
-        except Exception as e:
-            # On error, fall back to first valid action
-            latency_ms = int((time.time() - start_time) * 1000)
-            return {
-                "action": valid_actions[0] if valid_actions else {},
-                "reasoning": f"LLM error: {e}",
-                "raw_output": str(e),
-                "metadata": {
-                    "model": self.model,
-                    "provider": self._provider,
-                    "latency_ms": latency_ms,
-                    "error": str(e),
-                },
-            }
+        return {
+            "action": parsed["action"],
+            "reasoning": parsed.get("reasoning", ""),
+            "raw_output": raw_output,
+            "metadata": {
+                "model": self.model,
+                "provider": self._provider,
+                "latency_ms": latency_ms,
+                "prompt_tokens": response.get("prompt_tokens", 0),
+                "completion_tokens": response.get("completion_tokens", 0),
+                "total_tokens": response.get("total_tokens", 0),
+            },
+        }
 
     def _call_openai(self, prompt: str, system_prompt: Optional[str]) -> Dict[str, Any]:
         """Call OpenAI API."""
@@ -197,101 +181,27 @@ class LLMAgent(Agent):
         valid_actions: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
         """
-        Parse LLM response into an action.
+        Extract an action from the LLM response via JSON parsing.
 
-        Handles:
-        - JSON responses
-        - Free-text responses with action keywords
+        This is a best-effort first pass. The game's ActionParser (called
+        by the runner) is the authoritative parser and will re-parse the
+        raw_output with game-specific logic. This method only does
+        game-agnostic JSON extraction.
         """
-        # Try to extract JSON from response
         try:
-            # Look for JSON in the response
             import re
             json_match = re.search(r'\{[^{}]*\}', raw_output, re.DOTALL)
             if json_match:
                 data = json.loads(json_match.group())
-
-                # Extract action and reasoning
                 action = data.get("action", data)
                 reasoning = data.get("reasoning", "")
-
-                # Map to valid action if needed
-                mapped = self._map_to_valid_action(action, valid_actions)
-                return {"action": mapped, "reasoning": reasoning}
+                return {"action": action, "reasoning": reasoning}
         except (json.JSONDecodeError, AttributeError):
             pass
 
-        # Try to match keywords in response
-        upper = raw_output.upper()
-
-        # Check for action types
-        for va in valid_actions:
-            action_type = va.get("action_type", "")
-            if action_type in upper:
-                # Try to extract value
-                if action_type == "GUESS":
-                    # Look for word
-                    word = va.get("word", "")
-                    if word and word.upper() in upper:
-                        return {"action": va, "reasoning": f"Matched {word}"}
-                elif action_type == "GIVE_CLUE":
-                    # Extract clue word and number
-                    return {"action": self._extract_clue(raw_output), "reasoning": "Extracted clue"}
-                elif action_type == "PASS":
-                    return {"action": va, "reasoning": "Pass detected"}
-
-        # Fallback: return first valid action
         return {
             "action": valid_actions[0] if valid_actions else {},
-            "reasoning": "Could not parse - using fallback",
-        }
-
-    def _map_to_valid_action(
-        self,
-        action: Dict[str, Any],
-        valid_actions: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        """Map parsed action to a valid action."""
-        action_type = action.get("action_type", "")
-
-        for va in valid_actions:
-            if va.get("action_type") == action_type:
-                # For GUESS, match word
-                if action_type == "GUESS":
-                    if va.get("word", "").upper() == action.get("word", "").upper():
-                        return va
-                # For other types, return if matches
-                elif action_type in ["PASS", "GIVE_CLUE"]:
-                    return {**va, **action}
-
-        # If no match found, return original
-        return action
-
-    def _extract_clue(self, text: str) -> Dict[str, Any]:
-        """Extract clue word and number from text."""
-        import re
-
-        # Look for patterns like "CLUE: word 3" or "word for 3"
-        patterns = [
-            r'["\']?(\w+)["\']?\s*(?:for|:)?\s*(\d+)',
-            r'clue[:\s]+["\']?(\w+)["\']?\s*,?\s*(\d+)',
-        ]
-
-        for pattern in patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                return {
-                    "action_type": "GIVE_CLUE",
-                    "clue": match.group(1).upper(),
-                    "number": int(match.group(2)),
-                }
-
-        # Fallback - just return a generic clue
-        words = [w for w in text.split() if w.isalpha() and len(w) > 2]
-        return {
-            "action_type": "GIVE_CLUE",
-            "clue": words[0].upper() if words else "HINT",
-            "number": 1,
+            "reasoning": "Could not parse JSON - using fallback",
         }
 
     def get_metadata(self) -> Dict[str, Any]:

@@ -63,30 +63,37 @@ class CodenamesStateAdapter(StateAdapter):
         """
         Return the system prompt for the LLM.
 
+        Extracts team, score, and clue context from the public/private
+        state dicts passed by the runner.
+
         Args:
             role: "spymaster" or "operative"
-            **kwargs: Additional context (team, clue, number for operative)
+            **kwargs: Must include public_state and private_state dicts
 
         Returns:
             System prompt string
         """
-        team = kwargs.get("team", "red")
+        public_state = kwargs.get("public_state", {})
+        private_state = kwargs.get("private_state", {})
+        team = private_state.get("team", "red")
         team_color = team.upper()
-        opponent_color = "BLUE" if team_color == "RED" else "RED"
 
         if role == "spymaster":
-            # For spymaster, we need card counts
-            team_cards = kwargs.get("team_cards", 9)
-            opponent_cards = kwargs.get("opponent_cards", 8)
+            if team_color == "RED":
+                team_cards = public_state.get("red_remaining", 9)
+                opponent_cards = public_state.get("blue_remaining", 8)
+            else:
+                team_cards = public_state.get("blue_remaining", 9)
+                opponent_cards = public_state.get("red_remaining", 8)
             return get_spymaster_system_prompt(team, team_cards, opponent_cards)
 
         elif role == "operative":
-            clue = kwargs.get("clue", "")
-            number = kwargs.get("number", 0)
+            current_clue = public_state.get("current_clue") or {}
+            clue = current_clue.get("word", "")
+            number = current_clue.get("number", 0)
             return get_operative_system_prompt(team, clue, number)
 
-        else:
-            return "You are playing Codenames. Follow the instructions carefully."
+        return "You are playing Codenames. Follow the instructions carefully."
 
     def _format_spymaster_prompt(
         self,

@@ -19,6 +19,27 @@ __all__ = [
     "CatanGameConfig",
     "CatanStateAdapter",
     "CatanActionParser",
+    "create_game",
 ]
 
 GAME_TYPE = "catan"
+
+
+def create_game(arena_config):
+    """
+    Factory: create a CatanAECEnv from an ArenaConfig.
+
+    Wraps the Catanatron game engine in a PettingZoo-style AEC
+    environment compatible with the arena Game interface.
+    """
+    from catan_arena.envs.catan_pettingzoo import CatanAECEnv
+
+    game_config = arena_config.game_config or {}
+    env = CatanAECEnv(
+        num_players=len(arena_config.players),
+        map_type=game_config.get("map_type", "BASE"),
+        vps_to_win=game_config.get("vps_to_win", 10),
+        max_turns=arena_config.max_turns,
+    )
+    env.reset(seed=arena_config.seed)
+    return env

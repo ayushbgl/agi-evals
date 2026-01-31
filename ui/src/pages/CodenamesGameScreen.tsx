@@ -15,8 +15,16 @@ import {
   Alert,
   Chip,
   LinearProgress,
+  TextField,
+  IconButton,
+  Tooltip,
+  Collapse,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import SendIcon from '@mui/icons-material/Send';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 import { CodenamesBoard } from '../components/codenames';
 import './CodenamesLiveScreen.scss';
@@ -45,6 +53,14 @@ const CodenamesGameScreen: React.FC = () => {
   const [gameOver, setGameOver] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
   const [turnNumber, setTurnNumber] = useState(0);
+
+  // Manual play state
+  const [waitingForInput, setWaitingForInput] = useState(false);
+  const [currentPrompt, setCurrentPrompt] = useState<string>('');
+  const [systemPrompt, setSystemPrompt] = useState<string>('');
+  const [llmResponse, setLlmResponse] = useState<string>('');
+  const [promptExpanded, setPromptExpanded] = useState(true);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // Connect to WebSocket
   useEffect(() => {
@@ -102,6 +118,14 @@ const CodenamesGameScreen: React.FC = () => {
         setPublicState(msg.public_state);
         setLlmThinking(null);
         setLastAction(null);
+        setWaitingForInput(false);
+        break;
+
+      case 'waiting_for_input':
+        setWaitingForInput(true);
+        setCurrentPrompt(msg.prompt || '');
+        setSystemPrompt(msg.system_prompt || '');
+        setLlmResponse('');
         break;
 
       case 'llm_thinking':
@@ -110,6 +134,7 @@ const CodenamesGameScreen: React.FC = () => {
           model: msg.model,
           status: 'thinking',
         });
+        setWaitingForInput(false);
         break;
 
       case 'llm_decision':
@@ -125,6 +150,7 @@ const CodenamesGameScreen: React.FC = () => {
         setPublicState(msg.public_state);
         setLastAction(msg);
         setLlmThinking(null);
+        setWaitingForInput(false);
         if (msg.game_over) {
           setGameOver(true);
         }
@@ -133,6 +159,7 @@ const CodenamesGameScreen: React.FC = () => {
       case 'game_finished':
         setGameOver(true);
         setWinner(msg.winner);
+        setWaitingForInput(false);
         break;
 
       case 'error':
@@ -149,6 +176,45 @@ const CodenamesGameScreen: React.FC = () => {
 
   const handleBack = () => {
     navigate('/');
+  };
+
+  const copyPromptToClipboard = async () => {
+    const fullPrompt = `SYSTEM:\n${systemPrompt}\n\nUSER:\n${currentPrompt}`;
+    try {
+      await navigator.clipboard.writeText(fullPrompt);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const submitAction = () => {
+    if (!llmResponse.trim()) {
+      setError('Please paste the LLM response');
+      return;
+    }
+
+    try {
+      let parsed;
+      const jsonMatch = llmResponse.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[1].trim());
+      } else {
+        parsed = JSON.parse(llmResponse.trim());
+      }
+
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+          action: 'submit_action',
+          ...parsed,
+        }));
+        setLlmResponse('');
+        setError(null);
+      }
+    } catch (err) {
+      setError('Invalid JSON response. Please check the format.');
+    }
   };
 
   // Build grid for board
@@ -265,8 +331,106 @@ const CodenamesGameScreen: React.FC = () => {
 
           {/* Side panel */}
           <Box className="side-panel">
+            {/* Manual Play Section */}
+            {waitingForInput && (
+              <Paper elevation={2} sx={{ p: 2, mb: 2, backgroundColor: '#1e3a5f' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6" sx={{ color: '#4fc3f7' }}>
+                    {currentPlayer} ({currentRole}) - Waiting for Input
+                  </Typography>
+                  <Chip label="MANUAL" size="small" sx={{ backgroundColor: '#4fc3f7', color: '#000' }} />
+                </Box>
+
+                {/* Prompt Section */}
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                      LLM Prompt
+                    </Typography>
+                    <Box>
+                      <Tooltip title={copySuccess ? "Copied!" : "Copy prompt"}>
+                        <IconButton size="small" onClick={copyPromptToClipboard} sx={{ color: 'white' }}>
+                          <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <IconButton
+                        size="small"
+                        onClick={() => setPromptExpanded(!promptExpanded)}
+                        sx={{ color: 'white' }}
+                      >
+                        {promptExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                      </IconButton>
+                    </Box>
+                  </Box>
+                  <Collapse in={promptExpanded}>
+                    <Paper
+                      sx={{
+                        p: 1.5,
+                        mt: 1,
+                        backgroundColor: '#0d1b2a',
+                        maxHeight: 200,
+                        overflow: 'auto',
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        component="pre"
+                        sx={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.75rem',
+                          color: 'rgba(255,255,255,0.9)',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                          m: 0,
+                        }}
+                      >
+                        {currentPrompt}
+                      </Typography>
+                    </Paper>
+                  </Collapse>
+                </Box>
+
+                {/* Response Input */}
+                <Box>
+                  <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.7)', mb: 1 }}>
+                    Paste LLM Response (JSON)
+                  </Typography>
+                  <TextField
+                    multiline
+                    rows={4}
+                    fullWidth
+                    value={llmResponse}
+                    onChange={(e) => setLlmResponse(e.target.value)}
+                    placeholder='{"action_type": "GIVE_CLUE", "word": "ocean", "number": 3}'
+                    sx={{
+                      backgroundColor: '#0d1b2a',
+                      '& .MuiInputBase-input': {
+                        color: 'white',
+                        fontFamily: 'monospace',
+                        fontSize: '0.85rem',
+                      },
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
+                        '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
+                        '&.Mui-focused fieldset': { borderColor: '#4fc3f7' },
+                      },
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    onClick={submitAction}
+                    startIcon={<SendIcon />}
+                    sx={{ mt: 2, backgroundColor: '#4fc3f7', color: '#000' }}
+                  >
+                    Submit Move
+                  </Button>
+                </Box>
+              </Paper>
+            )}
+
             {/* LLM Status */}
-            <Paper className="llm-section" elevation={2}>
+            {!waitingForInput && <Paper className="llm-section" elevation={2}>
               <Typography variant="h6" gutterBottom>
                 LLM Status
               </Typography>
@@ -309,7 +473,7 @@ const CodenamesGameScreen: React.FC = () => {
                   Waiting for turn...
                 </Typography>
               )}
-            </Paper>
+            </Paper>}
 
             {/* Players */}
             <Paper className="teams-section" elevation={2}>

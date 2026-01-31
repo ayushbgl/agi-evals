@@ -39,6 +39,40 @@ __all__ = [
     "CodenamesPlayerConfig",
     "CodenamesStateAdapter",
     "CodenamesActionParser",
+    "create_game",
 ]
 
 GAME_TYPE = "codenames"
+
+
+def create_game(arena_config):
+    """
+    Factory: create a CodenamesGame from an ArenaConfig.
+
+    Extracts team and role assignments from the player configurations
+    to set up the Codenames game structure.
+    """
+    red_spymaster = None
+    red_operatives = []
+    blue_spymaster = None
+    blue_operatives = []
+
+    for p in arena_config.players:
+        if p.team == "red":
+            if p.role == "spymaster":
+                red_spymaster = p.id
+            else:
+                red_operatives.append(p.id)
+        elif p.team == "blue":
+            if p.role == "spymaster":
+                blue_spymaster = p.id
+            else:
+                blue_operatives.append(p.id)
+
+    return CodenamesGame(
+        red_spymaster=red_spymaster or "red_spymaster",
+        red_operatives=red_operatives or ["red_operative"],
+        blue_spymaster=blue_spymaster or "blue_spymaster",
+        blue_operatives=blue_operatives or ["blue_operative"],
+        seed=arena_config.seed,
+    )

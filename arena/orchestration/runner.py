@@ -12,7 +12,7 @@ from datetime import datetime
 
 from arena.config import ArenaConfig, PlayerConfig, create_config
 from arena.registry import (
-    get_game_class,
+    get_game_factory,
     get_state_adapter_class,
     get_action_parser_class,
 )
@@ -46,10 +46,10 @@ def run_arena_game(
         print(f"Starting {config.game_type} game {game_id}")
         print(f"Players: {[p.id for p in config.players]}")
 
-    # Initialize game based on game_type
+    # Initialize game via registry factory (game-agnostic)
     game = _create_game(config)
 
-    # Initialize adapters
+    # Initialize adapters via registry (game-agnostic)
     StateAdapterClass = get_state_adapter_class(config.game_type)
     ActionParserClass = get_action_parser_class(config.game_type)
 
@@ -112,11 +112,12 @@ def run_arena_game(
             turn_history=turn_history[-10:],
         )
 
+        # Generate system prompt — pass full state so adapters can extract
+        # whatever game-specific context they need
         system_prompt = state_adapter.format_system_prompt(
             role=current_role,
-            team=private_state.get("team"),
-            clue=public_state.get("current_clue", {}).get("word") if public_state.get("current_clue") else None,
-            number=public_state.get("current_clue", {}).get("number") if public_state.get("current_clue") else None,
+            public_state=public_state,
+            private_state=private_state,
         )
 
         # Get decision from agent
@@ -136,7 +137,7 @@ def run_arena_game(
             reasoning = decision_result.get("reasoning", "")
             raw_output = decision_result.get("raw_output", "")
 
-            # Parse/validate action if needed
+            # Parse/validate action using the game's ActionParser
             try:
                 if hasattr(action_parser, "parse") and isinstance(raw_output, str) and raw_output:
                     parsed_action = action_parser.parse(raw_output, valid_actions)
@@ -290,7 +291,7 @@ def run_simple_game(
     Simplified interface for running a game.
 
     Args:
-        game_type: Type of game ("catan", "codenames", etc.)
+        game_type: Type of game ("catan", "codenames", "simple_card", etc.)
         player_configs: List of player config dicts
         max_turns: Maximum turns before truncation
         seed: Random seed
@@ -315,55 +316,9 @@ def run_simple_game(
 
 
 def _create_game(config: ArenaConfig):
-    """Create a game instance based on config."""
-    game_type = config.game_type
-
-    if game_type == "codenames":
-        from games.codenames.game import CodenamesGame
-
-        # Extract player assignments
-        red_spymaster = None
-        red_operatives = []
-        blue_spymaster = None
-        blue_operatives = []
-
-        for p in config.players:
-            if p.team == "red":
-                if p.role == "spymaster":
-                    red_spymaster = p.id
-                else:
-                    red_operatives.append(p.id)
-            elif p.team == "blue":
-                if p.role == "spymaster":
-                    blue_spymaster = p.id
-                else:
-                    blue_operatives.append(p.id)
-
-        game = CodenamesGame(
-            red_spymaster=red_spymaster or "red_spymaster",
-            red_operatives=red_operatives or ["red_operative"],
-            blue_spymaster=blue_spymaster or "blue_spymaster",
-            blue_operatives=blue_operatives or ["blue_operative"],
-            seed=config.seed,
-        )
-        return game
-
-    elif game_type == "catan":
-        # For Catan, use the existing PettingZoo environment
-        from catan_arena.envs.catan_pettingzoo import CatanAECEnv
-
-        game_config = config.game_config or {}
-        env = CatanAECEnv(
-            num_players=len(config.players),
-            map_type=game_config.get("map_type", "BASE"),
-            vps_to_win=game_config.get("vps_to_win", 10),
-            max_turns=config.max_turns,
-        )
-        env.reset(seed=config.seed)
-        return env
-
-    else:
-        raise ValueError(f"Unknown game type: {game_type}")
+    """Create a game instance using the registry factory."""
+    factory = get_game_factory(config.game_type)
+    return factory(config)
 
 
 def _create_agents(config: ArenaConfig) -> Dict[str, Any]:
@@ -381,12 +336,14 @@ def _create_agents(config: ArenaConfig) -> Dict[str, Any]:
                 seed=config.seed,
             )
         elif player_config.type == "llm":
-            # LLM agents would be created here
-            # For now, fall back to random
-            agents[player_config.id] = RandomAgent(
+            from arena.llm.llm_agent import LLMAgent
+
+            llm_cfg = player_config.llm_config or {}
+            agents[player_config.id] = LLMAgent(
                 agent_id=player_config.id,
-                seed=config.seed,
+                model=player_config.model or "gpt-4o",
+                temperature=llm_cfg.get("temperature", 0.7),
+                max_tokens=llm_cfg.get("max_tokens", 1024),
             )
-        # Add more agent types as needed
 
     return agents

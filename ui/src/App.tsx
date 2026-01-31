@@ -16,6 +16,7 @@ import CatanLiveScreen from "./pages/CatanLiveScreen";
 import CodenamesLiveScreen from "./pages/CodenamesLiveScreen";
 import CatanGameScreen from "./pages/CatanGameScreen";
 import CodenamesGameScreen from "./pages/CodenamesGameScreen";
+import LeaderboardScreen from "./pages/LeaderboardScreen";
 
 const theme = createTheme({
   palette: {
@@ -65,6 +66,9 @@ function App() {
                 path="/games/:gameId"
                 element={<GameScreen replayMode={false} />}
               />
+
+              {/* Leaderboard */}
+              <Route path="/leaderboard" element={<LeaderboardScreen />} />
 
               {/* Home */}
               <Route path="/" element={<HomePage />} />

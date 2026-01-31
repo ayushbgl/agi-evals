@@ -18,6 +18,7 @@ Supported games are registered in the registry module.
 from arena.registry import (
     GAME_REGISTRY,
     get_game_class,
+    get_game_factory,
     get_state_adapter_class,
     get_action_parser_class,
     get_game_config_class,
@@ -28,6 +29,7 @@ from arena.config import ArenaConfig, PlayerConfig, LLMConfig
 __all__ = [
     "GAME_REGISTRY",
     "get_game_class",
+    "get_game_factory",
     "get_state_adapter_class",
     "get_action_parser_class",
     "get_game_config_class",

@@ -88,7 +88,7 @@ class StateAdapter(ABC):
         """
         pass
 
-    def format_system_prompt(self, role: Optional[str] = None) -> str:
+    def format_system_prompt(self, role: Optional[str] = None, **kwargs) -> str:
         """
         Return the system prompt for the LLM.
 
@@ -98,6 +98,9 @@ class StateAdapter(ABC):
 
         Args:
             role: Optional role identifier for role-specific prompts
+            **kwargs: Additional context passed by the runner, including
+                public_state and private_state dicts. Game-specific adapters
+                can extract whatever they need from these.
 
         Returns:
             System prompt string

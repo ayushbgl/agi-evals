@@ -97,6 +97,70 @@ async def health():
     return {"status": "healthy"}
 
 
+_leaderboard_cache: Optional[Dict[str, Any]] = None
+
+@app.get("/api/arena/leaderboard")
+async def get_leaderboard():
+    global _leaderboard_cache
+    if _leaderboard_cache is None:
+        from arena.leaderboard.data import generate_benchmark
+        matches, entries = generate_benchmark()
+        _leaderboard_cache = {
+            "entries": [
+                {
+                    "rank": e.rank,
+                    "model": {
+                        "name": e.model.name,
+                        "provider": e.model.provider,
+                        "context_window": e.model.context_window,
+                        "param_count": e.model.param_count,
+                    },
+                    "elo": round(e.elo),
+                    "elo_ci": round(e.elo_ci),
+                    "elo_trend": round(e.elo_trend),
+                    "wins": e.wins,
+                    "losses": e.losses,
+                    "draws": e.draws,
+                    "win_rate": round(e.win_rate, 3),
+                    "avg_latency_ms": round(e.avg_latency_ms),
+                    "game_stats": {
+                        gt: {
+                            "elo": round(s.elo),
+                            "wins": s.wins,
+                            "losses": s.losses,
+                            "draws": s.draws,
+                            "win_rate": round(s.win_rate, 3),
+                            "games": s.games,
+                            "avg_latency_ms": round(s.avg_latency_ms),
+                        }
+                        for gt, s in e.game_stats.items()
+                        if s and s.games > 0
+                    },
+                }
+                for e in entries
+            ],
+            "matches": [
+                {
+                    "player_1": m.player_1,
+                    "player_2": m.player_2,
+                    "game_type": m.game_type,
+                    "winner": m.winner,
+                    "p1_score": m.p1_score,
+                    "p2_score": m.p2_score,
+                    "total_turns": m.total_turns,
+                    "timestamp": m.timestamp,
+                }
+                for m in matches[-20:]
+            ],
+            "meta": {
+                "total_matches": len(matches),
+                "game_types": ["catan", "codenames", "simple_card"],
+                "num_models": len(entries),
+            },
+        }
+    return _leaderboard_cache
+
+
 @app.post("/api/arena/codenames/start", response_model=StartGameResponse)
 async def start_codenames_game(request: StartGameRequest):
     """Start a new Codenames game with LLM players."""
@@ -144,6 +208,7 @@ async def start_codenames_game(request: StartGameRequest):
     # Store game state
     active_games[game_id] = {
         "game": game,
+        "game_type": "codenames",
         "agents": agents,
         "state_adapter": CodenamesStateAdapter(),
         "players": [p.model_dump() for p in request.players],
@@ -303,12 +368,7 @@ async def websocket_game(websocket: WebSocket, game_id: str):
                 else:
                     await run_game_loop(game_id, websocket)
             elif data.get("action") == "submit_action":
-                # Handle manual action submission
-                if game_type == "catan":
-                    await handle_manual_action(game_id, data, websocket)
-                else:
-                    # TODO: Handle codenames manual actions
-                    pass
+                await handle_manual_action(game_id, data, websocket)
             elif data.get("action") == "state":
                 # Return current state
                 if game_type == "catan":
@@ -388,6 +448,31 @@ async def run_game_loop(game_id: str, websocket: WebSocket):
             number=public_state.get("current_clue", {}).get("number") if public_state.get("current_clue") else None,
         )
 
+        # Check if this player is in manual mode
+        player_configs = game_data.get("players", [])
+        is_manual = any(
+            pc.get("id") == current_player_id and pc.get("type") == "manual"
+            for pc in player_configs
+        ) or agent is None
+
+        if is_manual:
+            # Manual mode — broadcast prompt and wait for user input
+            await broadcast_to_game(game_id, {
+                "type": "waiting_for_input",
+                "player_id": current_player_id,
+                "current_role": current_role,
+                "prompt": prompt,
+                "system_prompt": system_prompt,
+                "valid_actions": valid_actions,
+                "message": "Copy the prompt above, send to your LLM, then paste the JSON response below.",
+            })
+            game_data["waiting_for"] = current_player_id
+            game_data["current_turn"] = turn_number
+            game_data["pending_valid_actions"] = valid_actions
+            return  # Exit loop — resumes via handle_manual_action
+
+        print(f"[TRACE] turn={turn_number} player={current_player_id} is_manual={is_manual} agent={type(agent).__name__} conns={len(game_connections.get(game_id, []))}", flush=True)
+
         # Notify: LLM thinking
         await broadcast_to_game(game_id, {
             "type": "llm_thinking",
@@ -395,7 +480,6 @@ async def run_game_loop(game_id: str, websocket: WebSocket):
             "model": agent.get_metadata().get("model", "unknown"),
         })
 
-        # Small delay for UI
         await asyncio.sleep(0.5)
 
         # Get decision
@@ -408,13 +492,24 @@ async def run_game_loop(game_id: str, websocket: WebSocket):
                 role=current_role,
                 turn_number=turn_number,
             )
+            print(f"[TRACE] decide() returned action={decision.get('action', {}).get('action_type')}", flush=True)
         except Exception as e:
-            decision = {
-                "action": valid_actions[0] if valid_actions else {},
-                "reasoning": f"Error: {e}",
-                "raw_output": "",
-                "metadata": {"error": str(e)},
-            }
+            print(f"[TRACE] decide() raised {type(e).__name__}, sending waiting_for_input", flush=True)
+            # LLM call failed — fall back to manual mode
+            await broadcast_to_game(game_id, {
+                "type": "waiting_for_input",
+                "player_id": current_player_id,
+                "current_role": current_role,
+                "prompt": prompt,
+                "system_prompt": system_prompt,
+                "valid_actions": valid_actions,
+                "message": f"LLM call failed ({e}). Paste a response manually.",
+            })
+            game_data["waiting_for"] = current_player_id
+            game_data["current_turn"] = turn_number
+            game_data["pending_valid_actions"] = valid_actions
+            print(f"[TRACE] waiting_for_input sent, returning", flush=True)
+            return  # Exit loop — resumes via handle_manual_action
 
         action = decision.get("action", {})
         reasoning = decision.get("reasoning", "")
@@ -604,31 +699,42 @@ async def run_catan_game_loop(game_id: str, websocket: WebSocket):
                     turn_number=turn_number,
                 )
             except Exception as e:
-                decision = {"action": None, "reasoning": f"Error: {e}"}
-                game.play_tick()
+                decision = None
 
-            if decision.get("action"):
-                action = decision.get("action", {})
-                reasoning = decision.get("reasoning", "")
-
+            if not decision or not decision.get("action"):
+                # LLM call failed or returned no action — fall back to manual mode
                 await broadcast_to_game(game_id, {
-                    "type": "llm_decision",
+                    "type": "waiting_for_input",
                     "player_id": player_id,
-                    "action": action,
-                    "reasoning": reasoning,
+                    "current_color": current_color,
+                    "prompt": prompt,
+                    "system_prompt": system_prompt,
+                    "valid_actions": valid_actions,
+                    "message": "LLM call failed or returned no action. Paste a response manually.",
                 })
+                game_data["waiting_for"] = player_id
+                game_data["current_turn"] = turn_number
+                return
 
-                await asyncio.sleep(0.5)
+            action = decision["action"]
+            reasoning = decision.get("reasoning", "")
 
-                try:
-                    from catanatron.json import action_from_json
-                    action_type = action.get("action_type")
-                    value = action.get("value")
-                    catan_action = action_from_json([current_color, action_type, value])
-                    game.execute(catan_action)
-                except Exception as e:
-                    game.play_tick()
-            else:
+            await broadcast_to_game(game_id, {
+                "type": "llm_decision",
+                "player_id": player_id,
+                "action": action,
+                "reasoning": reasoning,
+            })
+
+            await asyncio.sleep(0.5)
+
+            try:
+                from catanatron.json import action_from_json
+                action_type = action.get("action_type")
+                value = action.get("value")
+                catan_action = action_from_json([current_color, action_type, value])
+                game.execute(catan_action)
+            except Exception as e:
                 game.play_tick()
 
         # Get updated game state
@@ -666,31 +772,67 @@ async def run_catan_game_loop(game_id: str, websocket: WebSocket):
     })
 
 
+def _match_action(parsed: Dict[str, Any], valid_actions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Match a parsed action against valid actions. Raises ValueError on no match."""
+    # Exact match
+    for va in valid_actions:
+        if va == parsed:
+            return va
+    # Match by action_type + all other fields present in parsed
+    action_type = parsed.get("action_type")
+    for va in valid_actions:
+        if va.get("action_type") != action_type:
+            continue
+        if all(va.get(k) == v for k, v in parsed.items() if k != "action_type"):
+            return va
+    # Fall back to first action with matching action_type
+    for va in valid_actions:
+        if va.get("action_type") == action_type:
+            return va
+    raise ValueError(f"No valid action matches {parsed}. Valid actions: {valid_actions}")
+
+
 async def handle_manual_action(game_id: str, action_data: Dict[str, Any], websocket: WebSocket):
-    """Handle a manually submitted action from the user."""
+    """Handle a manually submitted action from the user.
+
+    Accepts either direct action fields:
+        {"action": "submit_action", "action_type": "GUESS", "word": "ocean"}
+    Or raw LLM output to parse:
+        {"action": "submit_action", "raw_output": "...json block..."}
+    """
     if game_id not in active_games:
         await websocket.send_json({"type": "error", "message": "Game not found"})
         return
 
     game_data = active_games[game_id]
     game = game_data["game"]
+    game_type = game_data.get("game_type", "codenames")
 
     if game_data.get("waiting_for") is None:
         await websocket.send_json({"type": "error", "message": "Not waiting for input"})
         return
 
     player_id = game_data["waiting_for"]
-    current_color = player_id.replace("player_", "")
 
     try:
-        # Parse the action from user input
-        # The LLM response has action_type and value at the top level
-        # action_data contains: {"action": "submit_action", "action_type": "...", "value": ..., "rationale": "..."}
-        action = {
-            "action_type": action_data.get("action_type"),
-            "value": action_data.get("value"),
-        }
-        reasoning = action_data.get("reasoning", action_data.get("rationale", ""))
+        # --- Parse action from user input ---
+        if "raw_output" in action_data:
+            # Extract JSON from raw LLM output (handles code blocks or bare JSON)
+            import re
+            raw = action_data["raw_output"]
+            json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', raw, re.DOTALL)
+            if not json_match:
+                json_match = re.search(r'(\{[^{}]*"action_type"[^{}]*\})', raw)
+            if json_match:
+                action = json.loads(json_match.group(1))
+            else:
+                raise ValueError("Could not extract JSON action from raw output")
+            reasoning = action_data.get("reasoning", "")
+        else:
+            # Direct action fields (strip the websocket envelope key)
+            action = {k: v for k, v in action_data.items()
+                      if k not in ("action", "reasoning", "rationale")}
+            reasoning = action_data.get("reasoning", action_data.get("rationale", ""))
 
         # Broadcast the decision
         await broadcast_to_game(game_id, {
@@ -702,19 +844,23 @@ async def handle_manual_action(game_id: str, action_data: Dict[str, Any], websoc
 
         await asyncio.sleep(0.3)
 
-        # Execute the action
-        from catanatron.json import action_from_json
-        action_type = action.get("action_type")
-        value = action.get("value")
-
-        catan_action = action_from_json([current_color, action_type, value])
-        game.execute(catan_action)
+        # --- Execute based on game type ---
+        if game_type == "catan":
+            from catanatron.json import action_from_json
+            current_color = player_id.replace("player_", "")
+            catan_action = action_from_json([current_color, action.get("action_type"), action.get("value")])
+            game.execute(catan_action)
+            game_over = game.winning_color() is not None
+            game_state = json.loads(json.dumps(game, cls=GameEncoder))
+        else:
+            # Codenames / any core.Game implementation
+            valid_actions = game_data.get("pending_valid_actions", game.get_available_actions())
+            matched = _match_action(action, valid_actions)
+            _result, game_over = game.step(matched)
+            game_state = game.get_public_state()
 
         # Clear waiting state
         game_data["waiting_for"] = None
-
-        # Get updated game state
-        game_state = json.loads(json.dumps(game, cls=GameEncoder))
 
         # Notify: action executed
         await broadcast_to_game(game_id, {
@@ -722,13 +868,16 @@ async def handle_manual_action(game_id: str, action_data: Dict[str, Any], websoc
             "turn_number": game_data.get("current_turn", 0),
             "player_id": player_id,
             "game_state": game_state,
-            "game_over": game.winning_color() is not None,
+            "game_over": game_over,
         })
 
-        # Continue the game loop
-        if game.winning_color() is None:
+        # Continue the appropriate game loop
+        if not game_over:
             await asyncio.sleep(0.5)
-            await run_catan_game_loop(game_id, websocket)
+            if game_type == "catan":
+                await run_catan_game_loop(game_id, websocket)
+            else:
+                await run_game_loop(game_id, websocket)
 
     except Exception as e:
         await websocket.send_json({

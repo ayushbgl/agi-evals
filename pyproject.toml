@@ -3,14 +3,14 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "catanatron"
-version = "3.3.0"
+name = "agi-evals"
+version = "4.0.0"
 authors = [{ name = "Bryan Collazo", email = "bcollazo2010@gmail.com" }]
-description = "Fast Settlers of Catan Python Implementation"
+description = "Multi-game AI evaluation and agent competition platform"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "GPL-3.0-or-later"
-keywords = ["catan", "settlers of catan", "board game", "python"]
+keywords = ["ai", "evaluation", "multi-agent", "game", "arena", "llm", "benchmark"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",

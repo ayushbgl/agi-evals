@@ -1,0 +1,355 @@
+.leaderboard-screen {
+  min-height: 100vh;
+  background: #0a0a0a;
+  color: #fff;
+  padding: 0 40px 60px;
+
+  // ─── Loading / Error ────────────────────────────────────────────
+  &.loading,
+  &.error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: 16px;
+
+    p {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.95rem;
+    }
+
+    button {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      padding: 8px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.18);
+      }
+    }
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.15);
+    border-top-color: #e50914;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  // ─── Header ─────────────────────────────────────────────────────
+  .lb-header {
+    padding: 48px 0 24px;
+
+    .back-btn {
+      display: block;
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.88rem;
+      cursor: pointer;
+      padding: 0;
+      margin-bottom: 16px;
+      transition: color 0.2s;
+
+      &:hover {
+        color: #fff;
+      }
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin: 0 0 6px;
+    }
+
+    .lb-meta {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.82rem;
+      margin: 0;
+    }
+  }
+
+  // ─── Filter tabs ────────────────────────────────────────────────
+  .filter-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+
+    .filter-tab {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.7);
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+
+      .tab-icon {
+        margin-right: 5px;
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+
+      &.active {
+        background: #e50914;
+        border-color: #e50914;
+        color: #fff;
+      }
+    }
+  }
+
+  // ─── Rankings table ─────────────────────────────────────────────
+  .rankings {
+    margin-bottom: 48px;
+
+    .rankings-header,
+    .ranking-row {
+      display: grid;
+      grid-template-columns: 72px 1fr 100px 80px 120px 80px 90px;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .rankings-header {
+      padding: 0 0 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .ranking-row {
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      transition: background 0.15s;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.04);
+        margin: 0 -12px;
+        padding-left: 12px;
+        padding-right: 12px;
+        border-radius: 6px;
+      }
+    }
+
+    // Rank badge
+    .rank-badge {
+      display: inline-block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .rank-badge.gold {
+      color: #ffd700;
+    }
+    .rank-badge.silver {
+      color: #c0c0c0;
+    }
+    .rank-badge.bronze {
+      color: #cd7f32;
+    }
+
+    // Model info
+    .model-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+
+      strong {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #fff;
+      }
+
+      .provider {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.4);
+      }
+    }
+
+    // Elo column
+    .col-elo {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .elo-value {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .elo-ci {
+      font-size: 0.68rem;
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    // Trend
+    .trend {
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .trend.up {
+      color: #4caf50;
+    }
+    .trend.down {
+      color: #ef5350;
+    }
+    .trend.neutral {
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    // W / L / D
+    .col-record {
+      display: flex;
+      gap: 6px;
+      font-size: 0.82rem;
+    }
+
+    .wins {
+      color: #4caf50;
+      font-weight: 600;
+    }
+    .losses {
+      color: #ef5350;
+      font-weight: 600;
+    }
+    .draws {
+      color: rgba(255, 255, 255, 0.45);
+    }
+    .sep {
+      color: rgba(255, 255, 255, 0.2);
+    }
+
+    // Win rate
+    .col-winrate {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    // Latency
+    .col-latency {
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.45);
+    }
+  }
+
+  // ─── Recent matches ─────────────────────────────────────────────
+  .recent-matches {
+    h2 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin: 0 0 18px;
+    }
+
+    .matches-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px;
+    }
+
+    .match-card {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 18px 20px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: background 0.2s;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .match-game-type {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.45);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+      }
+
+      .match-players {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .match-player {
+        flex: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.04);
+
+        &.winner {
+          background: rgba(76, 175, 80, 0.12);
+          border: 1px solid rgba(76, 175, 80, 0.25);
+        }
+
+        .player-name {
+          font-size: 0.78rem;
+          color: rgba(255, 255, 255, 0.8);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 100px;
+        }
+
+        .player-score {
+          font-size: 0.88rem;
+          font-weight: 700;
+          color: #fff;
+        }
+      }
+
+      .vs {
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.3);
+        font-weight: 600;
+        flex-shrink: 0;
+      }
+
+      .match-footer {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.4);
+
+        .match-result {
+          color: rgba(255, 255, 255, 0.55);
+        }
+
+        .match-result.draw {
+          color: rgba(255, 255, 255, 0.4);
+          font-style: italic;
+        }
+      }
+    }
+  }
+}
