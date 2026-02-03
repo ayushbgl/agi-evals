@@ -40,6 +40,14 @@ GAME_REGISTRY: Dict[str, Dict[str, str]] = {
         "action_parser_class": "games.simple_card.action_parser.SimpleCardActionParser",
         "config_class": "games.simple_card.config.SimpleCardGameConfig",
     },
+    "avalon": {
+        "game_module": "games.avalon",
+        "game_class": "games.avalon.game.AvalonGame",
+        "game_factory": "games.avalon.create_game",
+        "state_adapter_class": "games.avalon.state_adapter.AvalonStateAdapter",
+        "action_parser_class": "games.avalon.action_parser.AvalonActionParser",
+        "config_class": "games.avalon.config.AvalonGameConfig",
+    },
 }
 
 

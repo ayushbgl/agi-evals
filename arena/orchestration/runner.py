@@ -15,6 +15,7 @@ from arena.registry import (
     get_game_factory,
     get_state_adapter_class,
     get_action_parser_class,
+    get_game_module,
 )
 from arena.orchestration.state import create_initial_state, ArenaGameState, TurnRecord, AgentDecision
 from arena.llm.manual_agent import ManualAgent
@@ -130,6 +131,8 @@ def run_arena_game(
                 game_type=config.game_type,
                 role=current_role,
                 turn_number=turn_number,
+                public_state=public_state,
+                private_state=private_state,
             )
             latency_ms = int((datetime.now() - start_time).total_seconds() * 1000)
 
@@ -345,5 +348,24 @@ def _create_agents(config: ArenaConfig) -> Dict[str, Any]:
                 temperature=llm_cfg.get("temperature", 0.7),
                 max_tokens=llm_cfg.get("max_tokens", 1024),
             )
+        elif player_config.type == "rule_based":
+            try:
+                game_mod = get_game_module(config.game_type)
+                factory = getattr(game_mod, "create_baseline_agent", None)
+                if factory:
+                    agents[player_config.id] = factory(
+                        agent_id=player_config.id,
+                        seed=config.seed,
+                    )
+                else:
+                    agents[player_config.id] = RandomAgent(
+                        agent_id=player_config.id,
+                        seed=config.seed,
+                    )
+            except Exception:
+                agents[player_config.id] = RandomAgent(
+                    agent_id=player_config.id,
+                    seed=config.seed,
+                )
 
     return agents
